@@ -41,7 +41,7 @@ class Agent(object):
                 pass
             else:
                 action = max(self.q_table[self.state].iteritems(), key=operator.itemgetter(1))[0]
-                print('exploitation instead')
+                #print('exploitation instead')
         return action
 
 
@@ -79,6 +79,7 @@ class Agent(object):
         self.exploration_rate = self.min_exploration + (self.max_exploration - self.min_exploration) * numpy.exp(-self.decay_rate * episode)
 
 
+'''
 
 def run():
     """Run the agent for a finite number of trials."""
@@ -145,4 +146,6 @@ def comprehensive_test():
 
 if __name__ == '__main__':
    run()
+'''
+
  

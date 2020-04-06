@@ -205,6 +205,7 @@ class Environment(object):
 	def new_apple(self):
 		self.appleX, self.appleY = initialize_random_position(self.world_width, self.world_height, self.block_size)
 
+	'''
 	def get_apple_quadrant(self):
 		appleX, appleY = self.get_appple_position()
 		x, y = self.get_head_position()
@@ -239,6 +240,7 @@ class Environment(object):
 
 	def high_score(self):
 		return self.highest_score_so_far
+	'''
 
 # Initialize the environment	
 env = Environment(DISPLAY_WIDTH,
@@ -272,6 +274,7 @@ score = 0
 	
 episode = 0
 	
+cur_reward = 0
 
 while running:
 	for event in pygame.event.get():
@@ -279,7 +282,7 @@ while running:
 			gameExit = True
 			running = False
 
-	cur_reward = 0
+	
 	direction = agent.get_action()
 	#print("get_action: cur pos: (%d, %d), cur direction: %s" % (env.lead_x, env.lead_y, direction))
 	
@@ -294,6 +297,7 @@ while running:
 		agent.update(direction, reward)
 
 		cur_reward += reward
+		#print('cur_reward: ', cur_reward)
 
 		# Head of the snake
 		snake_head = env.get_head_position()
@@ -303,7 +307,6 @@ while running:
 
 		if game_end == 1:
 			score = 0
-			gameOver = True
 		elif game_end == 2:
 			env.update_head_position()
 			snakelist = []
@@ -330,6 +333,8 @@ while running:
 	if gameOver:
 		episode += 1
 		agent.update_exploration(episode)
-		print("episode: %d, new exploration rate: %d" % (episode, agent.exploration_rate))
+		print("episode: %d, reward: %d" % (episode, cur_reward))
+		cur_reward = 0
+		gameOver = False
 
 pygame.quit()
