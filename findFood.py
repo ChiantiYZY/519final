@@ -8,8 +8,8 @@ from agent import Agent
 pygame.init()
 
 #dimenstions of the window
-DISPLAY_WIDTH = 270
-DISPLAY_HEIGHT = 270
+DISPLAY_WIDTH = 180
+DISPLAY_HEIGHT = 180
 BLOCK_SIZE = 30
 
 FPS = 30
@@ -88,7 +88,7 @@ class Environment(object):
 		self.appleX, self.appleY = initialize_random_position(self.world_width, self.world_height, self.block_size)
     
 
-	def act(self, action):
+	def act(self, action, snakelist):
 		'''
 		Given an action, return the reward.
 		'''
@@ -96,6 +96,7 @@ class Environment(object):
 		#print("act    : cur pos: (%d, %d), cur direction: %s" % (self.lead_x, self.lead_y, action))
 		reward = -1
 		is_boundary = self.is_wall_nearby()
+		is_itself = self.is_touching_itself(snakelist)
 
 		game_end = 0
 
@@ -105,6 +106,7 @@ class Environment(object):
 		else:
 			self.move(action)
 			if self.is_goal_state(self.lead_x, self.lead_y):
+				self.new_apple()
 				reward = 100
 				game_end = 2
 		return reward, game_end
@@ -131,6 +133,26 @@ class Environment(object):
 
 		self.lead_x += x_change
 		self.lead_y += y_change
+
+	def is_touching_itself(self, snakelist):
+		left, right, up, down = False, False, False, False
+
+		#left
+		if (self.lead_x - self.block_size, self.lead_y) in snakelist[2 :]:
+			left = True
+		if (self.lead_x + self.block_size, self.lead_y) in snakelist[2 :]:
+			right = True
+		if (self.lead_x, self.lead_y - self.block_size) in snakelist[2 :]:
+			up = True
+		if (self.lead_x, self.lead_y + self.block_size) in snakelist[2 :]:
+			down = True
+
+		diction = {"LEFT":left,
+					"RIGHT":right,
+					"UP":up,
+					"DOWN":down}	
+
+		return diction
 
 	def is_wall_nearby(self):
 		left, right, up, down = False, False, False, False
@@ -173,15 +195,19 @@ class Environment(object):
 	def get_state(self):
 
 		head_position = self.get_head_position()
-		apple_position = self.get_appple_position()
+		apple_position = self.get_apple_position()
 		apple_info = tuple(self.is_apple_nearby().values())
 		wall_info = tuple(self.is_wall_nearby().values())
+
+		relative_pos = (head_position[0] - apple_position[0], head_position[1] - apple_position[1])
+
 
 		#print('wall_info: ', wall_info)
 		
 		# concatenating the tuples
 		#return head_position + apple_position + apple_info + wall_info
-		return head_position
+		#return head_position
+		return relative_pos + wall_info
 		
 	def get_next_goal(self):
 		return (self.appleX, self.appleY)
@@ -199,7 +225,7 @@ class Environment(object):
 		self.lead_x, self.lead_y = initialize_random_position(self.world_width, self.world_height, self.block_size)
 
 
-	def get_appple_position(self):
+	def get_apple_position(self):
 		return self.appleX, self.appleY
 
 	def new_apple(self):
@@ -276,6 +302,11 @@ episode = 0
 	
 cur_reward = 0
 
+wins = 0
+steps = 0
+win_count = []
+step_count = []
+
 while running:
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -288,11 +319,11 @@ while running:
 	
 	# Draw apple and background
 	gameDisplay.fill(BACKGROUND_COLOR)
-	apple = env.get_appple_position()
+	apple = env.get_apple_position()
 
 	if direction:
 		
-		reward, game_end = env.act(direction)
+		reward, game_end = env.act(direction, snakelist)
 
 		agent.update(direction, reward)
 
@@ -302,15 +333,18 @@ while running:
 		# Head of the snake
 		snake_head = env.get_head_position()
 		snakelist.append(snake_head)
+
 	
 		#print("get_head_position: cur pos: (%d, %d), cur direction: %s" % (env.lead_x, env.lead_y, direction))
 
 		if game_end == 1:
 			score = 0
-		elif game_end == 2:
-			env.update_head_position()
 			snakelist = []
 			snakeLength = 1
+		elif game_end == 2:
+			env.update_head_position()
+			#snakelist = []
+			snakeLength += 1
 			score += 1
 			gameOver = True
 				#print(agent.q_table)
@@ -330,10 +364,32 @@ while running:
 	pygame.display.update()
 	clock.tick(FPS)
 
+	# if gameOver:
+	# 	episode += 1
+	# 	agent.update_exploration(episode)
+	# 	if score % 5 == 0:
+	# 		win_count.append(wins)
+	# 		step_count.append(steps)
+	# 		#print("episode: %d, reward: %d" %(episode, cur_reward))
+	# 		print("steps: %d, wins: %d" %(steps, wins))
+	# 		steps = 0
+	# 	cur_reward = 0
+	# 	gameOver = False
+
+
 	if gameOver:
 		episode += 1
+		# if episode == 1000:
+		# 	break
+		steps += 1
 		agent.update_exploration(episode)
-		print("episode: %d, reward: %d" % (episode, cur_reward))
+		if score % 10 == 0:
+			wins += 1
+			win_count.append(wins)
+			step_count.append(steps)
+			#print("episode: %d, reward: %d" %(episode, cur_reward))
+			print("steps: %d, wins: %d" %(steps, wins))
+			steps = 0
 		cur_reward = 0
 		gameOver = False
 
