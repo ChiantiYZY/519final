@@ -24,10 +24,10 @@ class Agent(object):
     def reset(self, destination=None):
         self.reward = 0
 
-    def get_action(self):
+    def get_action(self, snakelist):
         max_q = 0
         
-        self.state = self.env.get_state()
+        self.state = self.env.get_state(snakelist)
 
         if not self.state in self.q_table:
             self.q_table[self.state] = {ac:0 for ac in self.env.valid_actions}
@@ -47,11 +47,11 @@ class Agent(object):
 
 
 
-    def update(self, action, reward):
+    def update(self, action, reward, snakelist):
 
         self.total_reward += reward
 
-        self.next_state = self.env.get_state()
+        self.next_state = self.env.get_state(snakelist)
 
         #check if next_state has q_values already
         if self.next_state not in self.q_table:

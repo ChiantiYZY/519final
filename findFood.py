@@ -8,8 +8,8 @@ from agent import Agent
 pygame.init()
 
 #dimenstions of the window
-DISPLAY_WIDTH = 180
-DISPLAY_HEIGHT = 180
+DISPLAY_WIDTH = 210
+DISPLAY_HEIGHT = 210
 BLOCK_SIZE = 30
 
 FPS = 30
@@ -98,9 +98,21 @@ class Environment(object):
 		is_boundary = self.is_wall_nearby()
 		is_itself = self.is_touching_itself(snakelist)
 
+
+
 		game_end = 0
 
-		if is_boundary[action]:
+		# if is_boundary[action] or is_itself:
+		# 	reward = -100
+		# 	game_end = 1
+
+		if is_itself[action]:
+			#print('hit itself at direction ', action)
+			#print('head: ', (self.lead_x, self.lead_y))
+			reward = -100
+			game_end = 1
+		# 	pass
+		elif is_boundary[action]:
 			reward = -100
 			game_end = 1
 		else:
@@ -137,15 +149,28 @@ class Environment(object):
 	def is_touching_itself(self, snakelist):
 		left, right, up, down = False, False, False, False
 
+		length = len(snakelist)
+		maxLen = 4 
+
+		#print('lead pos: ', (self.lead_x, self.lead_y))
+
 		#left
-		if (self.lead_x - self.block_size, self.lead_y) in snakelist[2 :]:
+		if (self.lead_x - self.block_size, self.lead_y) in snakelist[0 : length - 1]:
+			#print('left bite at pos: ', (self.lead_x - self.block_size, self.lead_y))
 			left = True
-		if (self.lead_x + self.block_size, self.lead_y) in snakelist[2 :]:
+		if (self.lead_x + self.block_size, self.lead_y) in snakelist[0 : length - 1]:
+			#print('right bite at pos: ', (self.lead_x + self.block_size, self.lead_y))
 			right = True
-		if (self.lead_x, self.lead_y - self.block_size) in snakelist[2 :]:
+		if (self.lead_x, self.lead_y - self.block_size) in snakelist[0 : length - 1]:
+			#print('up bite at pos: ', (self.lead_x, self.lead_y - self.block_size))
 			up = True
-		if (self.lead_x, self.lead_y + self.block_size) in snakelist[2 :]:
+		if (self.lead_x, self.lead_y + self.block_size) in snakelist[0 : length - 1]:
+			#print('down bite at pos: ', (self.lead_x, self.lead_y + self.block_size))
 			down = True
+
+
+		# if(left or right or up or down):
+		# 	print(snakelist)
 
 		diction = {"LEFT":left,
 					"RIGHT":right,
@@ -153,6 +178,10 @@ class Environment(object):
 					"DOWN":down}	
 
 		return diction
+
+		# if len(snakelist) > 0 and snakelist.count(snakelist[0]) > 1:
+		# 	return True
+		# return False
 
 	def is_wall_nearby(self):
 		left, right, up, down = False, False, False, False
@@ -192,22 +221,28 @@ class Environment(object):
 			"DOWN":down
 		}
 
-	def get_state(self):
+	def get_state(self, snakelist):
 
 		head_position = self.get_head_position()
 		apple_position = self.get_apple_position()
 		apple_info = tuple(self.is_apple_nearby().values())
 		wall_info = tuple(self.is_wall_nearby().values())
+		snake_info = tuple(self.is_touching_itself(snakelist).values())
 
 		relative_pos = (head_position[0] - apple_position[0], head_position[1] - apple_position[1])
 
+		if len(snakelist) > 0:
+			tail_head_pos = (snakelist[0][0] - snakelist[-1][0], snakelist[0][1] - snakelist[-1][1])
+		else:
+			tail_head_pos = (0, 0)
 
 		#print('wall_info: ', wall_info)
 		
 		# concatenating the tuples
 		#return head_position + apple_position + apple_info + wall_info
 		#return head_position
-		return relative_pos + wall_info
+		#return relative_pos + wall_info + tail_head_pos
+		return relative_pos + wall_info + snake_info
 		
 	def get_next_goal(self):
 		return (self.appleX, self.appleY)
@@ -307,6 +342,8 @@ steps = 0
 win_count = []
 step_count = []
 
+maxLen = 5
+
 while running:
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -314,7 +351,7 @@ while running:
 			running = False
 
 	
-	direction = agent.get_action()
+	direction = agent.get_action(snakelist)
 	#print("get_action: cur pos: (%d, %d), cur direction: %s" % (env.lead_x, env.lead_y, direction))
 	
 	# Draw apple and background
@@ -325,7 +362,7 @@ while running:
 		
 		reward, game_end = env.act(direction, snakelist)
 
-		agent.update(direction, reward)
+		agent.update(direction, reward, snakelist)
 
 		cur_reward += reward
 		#print('cur_reward: ', cur_reward)
@@ -342,9 +379,10 @@ while running:
 			snakelist = []
 			snakeLength = 1
 		elif game_end == 2:
-			env.update_head_position()
+			#env.update_head_position()
 			#snakelist = []
 			snakeLength += 1
+			snakeLength = min(snakeLength, maxLen)
 			score += 1
 			gameOver = True
 				#print(agent.q_table)
@@ -355,6 +393,9 @@ while running:
 		
 		if len(snakelist) > snakeLength:
 			del(snakelist[0])
+
+
+		#print(snakelist)
 
 
 		pygame.draw.rect(gameDisplay, red, [apple[0], apple[1], BLOCK_SIZE, BLOCK_SIZE])
@@ -382,7 +423,12 @@ while running:
 		# if episode == 1000:
 		# 	break
 		steps += 1
+		
+		
 		agent.update_exploration(episode)
+
+		#print('exploration rate: ', agent.exploration_rate)
+
 		if score % 10 == 0:
 			wins += 1
 			win_count.append(wins)
